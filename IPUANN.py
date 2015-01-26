@@ -43,6 +43,16 @@ def vectorize_tags(data):
     retdata[1] = list(tags)
     return retdata
 
+def compute_error(x, y):
+    total_error = 0
+    for i, value in enumerate(x):
+        total_error += np.abs(y[i] - value)
+    return total_error
+
+def compare_output(x,y):
+    return np.argmax(x) == np.argmax(y)
+
+
 
 class Layer(object):
     def __init__(self, num_in, num_out):
@@ -109,9 +119,11 @@ class MLP(object):
         return data
 
 
-    def backprop():
-        pass
-        #compute derivative of error with respect to weights
+    def random_change(self, error):
+        for layer in self.layers:
+            for wt in layer.w:
+                wt += (np.random.random() - 0.5) * (error / 10)
+
 
 
 
@@ -121,8 +133,7 @@ class MLP(object):
 def train_MLP(net, num_epochs, validation_interval, validation_size, training_set, validation_set):
     epoch = 0
     done = False
-    training_error_history = []   # \ __  for graphs
-    validation_error_history = [] # /
+    training_error_history = []   #  for graph
     lowest_error = np.inf
     error = 0
 
@@ -132,11 +143,15 @@ def train_MLP(net, num_epochs, validation_interval, validation_size, training_se
         print "training epoch {0}/{1}.".format(epoch, num_epochs)
         net_output = net.forward_pass(training_set[0][epoch])
         print net_output
+        error = compute_error(net_output, training_set[1][epoch])
+        print "guessed {0}. Correct: {1}".format(np.argmax(net_output), np.argmax(training_set[1][epoch]))
+        print "error: " + str(error)
         training_error_history.append(error)
-        #net.backprop(error)
+        net.random_change(error)
 
     end_time = time.clock()
     print "done training. Time elapsed: {0}m.".format(((end_time - start_time) / 60.))
+    return training_error_history,
 
 def test_MLP(net, num_epochs, training_set):
     epoch = 0
@@ -149,6 +164,8 @@ def test_MLP(net, num_epochs, training_set):
         epoch += 1
         print "testing epoch {0}/{1}.".format(epoch, num_epochs)
         net_output = net.forward_pass(training_set[0][epoch])
+        if compare_output(net_output, training_set[1][epoch]):
+            num_correct+=1
         #testing_error_history.append(error)
 
     end_time = time.clock()
@@ -156,25 +173,6 @@ def test_MLP(net, num_epochs, training_set):
     print "correct classifications: {0} out of {1}.".format(num_correct, num_epochs)
     print "percent correct: {0}".format( 1. * num_correct / num_epochs)
     print "Time elapsed: {0}m.".format(((end_time - start_time) / 60.))
-
-
-"""
-    ##### prevent overtraining?
-
-        if epoch % validation_interval == 0:
-            total_error = 0
-            index = epoch / validation_interval
-            for x in range(validation_size):
-                total_error += net.forward_prop(validation_set[0][index + x], validation_set[1][index + x])
-            average_error = total_error / validation_size
-            validation_error_history.append(average_error)
-
-            if average_error > lowest_error:
-                done = True
-            else:
-                lowest_error = average_error
-    #####
-"""
 
 def load_data():
     pickled_data = gzip.open(os.getcwd() + "/MNIST/mnist.pkl.gz", "rb")
@@ -194,7 +192,7 @@ def test():
     pickled_data.close()
     print "loaded data."
 
-    # converts set[1] into one-hot vectors so that they can be more
+    # converts set[1] into one-hot vectors so that they can be
     # easily compared to the network output.
     # for example: vectorize(3) -> [0,0,0,1,0,0,0,0,0,0]
     print "converting tags to vectors..."
@@ -208,10 +206,14 @@ def test():
     print "created network."
 
     print "training network..."
-    train_MLP(network, 10, 5, 2, training_set, validation_set)
+    error_hist = train_MLP(network, 100, 5, 2, training_set, validation_set)
 
     print "testing network..."
     test_MLP(network, 10, training_set)
+
+    plt.plot(error_hist,range(len(error_hist)),color='b',lw=1)
+    plt.axis([1,10,1,12])
+    plt.show()
 
 
 
