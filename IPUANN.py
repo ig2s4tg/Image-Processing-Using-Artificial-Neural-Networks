@@ -1,5 +1,6 @@
 #-----------------------------------------------------------------------------
 # Name:        IPUANN - Image Processing Using Artificial Neural Networks
+#              Science Fair 2015
 #
 # Author:      Walter Sagehorn
 #
@@ -53,7 +54,6 @@ def compare_output(x,y):
     return np.argmax(x) == np.argmax(y)
 
 
-
 class Layer(object):
     def __init__(self, num_in, num_out):
 
@@ -62,12 +62,10 @@ class Layer(object):
 
         # weights initialzed with values from sqrt(-6./(n_in+n_hidden)) to sqrt(6./(n_in+n_hidden))
         self.w = np.asarray(
-            np.random.RandomState(1234).uniform(
+            np.random.RandomState().uniform(
                 low=-np.sqrt(6. / (num_in + num_out)),
                 high=np.sqrt(6. / (num_in + num_out)),
-                size=(num_in, num_out)
-            )
-        )
+                size=(num_in, num_out)))
 
     # x is an array of values
     def activate(self, x):
@@ -75,10 +73,6 @@ class Layer(object):
 
 
 class SigmoidLayer(Layer):
-    """
-    desc of sigmoid layer
-    """
-
     def __init__(self, num_in, num_out):
         Layer.__init__(self, num_in, num_out)
 
@@ -86,10 +80,6 @@ class SigmoidLayer(Layer):
         return sigmoid(np.dot(x, self.w))
 
 class SoftMaxLayer(Layer):
-    """
-    desc of softmax layer
-    """
-
     def __init__(self, num_in, num_out):
         Layer.__init__(self, num_in, num_out)
 
@@ -98,13 +88,6 @@ class SoftMaxLayer(Layer):
 
 
 class MLP(object):
-
-    """
-    desc of MLP
-
-    list of hidden layers
-    """
-
     def __init__(self, num_in, hiddenlayers, num_out):
         self.layers = []
         self.layers.append(SigmoidLayer(num_in, hiddenlayers[0]))
@@ -118,16 +101,8 @@ class MLP(object):
             data = layer.activate(data)
         return data
 
-
-    def random_change(self, error):
-        for layer in self.layers:
-            for wt in layer.w:
-                wt += (np.random.random() - 0.5) * (error / 10)
-
-
-
-
-
+    def backprop(self, error):
+        pass
 
 
 def train_MLP(net, num_epochs, validation_interval, validation_size, training_set, validation_set):
@@ -140,18 +115,18 @@ def train_MLP(net, num_epochs, validation_interval, validation_size, training_se
     start_time = time.clock()
     while (epoch < num_epochs and not done):
         epoch += 1
-        print "training epoch {0}/{1}.".format(epoch, num_epochs)
+        #if epoch % 50 == 0: print "training epoch {0}/{1}.".format(epoch, num_epochs)
         net_output = net.forward_pass(training_set[0][epoch])
-        print net_output
+        #print net_output
         error = compute_error(net_output, training_set[1][epoch])
-        print "guessed {0}. Correct: {1}".format(np.argmax(net_output), np.argmax(training_set[1][epoch]))
-        print "error: " + str(error)
+        #print "guessed {0}. Correct: {1}".format(np.argmax(net_output), np.argmax(training_set[1][epoch]))
+        #print "error: " + str(error)
         training_error_history.append(error)
-        net.random_change(error)
+        net.backprop(error)
 
     end_time = time.clock()
     print "done training. Time elapsed: {0}m.".format(((end_time - start_time) / 60.))
-    return training_error_history,
+    return training_error_history
 
 def test_MLP(net, num_epochs, training_set):
     epoch = 0
@@ -162,23 +137,17 @@ def test_MLP(net, num_epochs, training_set):
     start_time = time.clock()
     while (epoch < num_epochs and not done):
         epoch += 1
-        print "testing epoch {0}/{1}.".format(epoch, num_epochs)
+        #print "testing epoch {0}/{1}.".format(epoch, num_epochs)
         net_output = net.forward_pass(training_set[0][epoch])
         if compare_output(net_output, training_set[1][epoch]):
             num_correct+=1
         #testing_error_history.append(error)
 
     end_time = time.clock()
-    print "done testing"
+    #print "done testing"
     print "correct classifications: {0} out of {1}.".format(num_correct, num_epochs)
-    print "percent correct: {0}".format( 1. * num_correct / num_epochs)
+    print "percent correct: {0}".format( 100. * num_correct / num_epochs)
     print "Time elapsed: {0}m.".format(((end_time - start_time) / 60.))
-
-def load_data():
-    pickled_data = gzip.open(os.getcwd() + "/MNIST/mnist.pkl.gz", "rb")
-    training_set, validation_set, testing_set = cPickle.load(pickled_data)
-    pickled_data.close()
-    return training_set
 
 def test():
 
@@ -201,24 +170,29 @@ def test():
     testing_set = vectorize_tags(testing_set)
     print "converted tags to vectors."
 
+    #create network
     hiddenlayers = [2500,2000,1500,1000,500]
     network = MLP(784, hiddenlayers, 10)
     print "created network."
 
-    print "training network..."
-    error_hist = train_MLP(network, 100, 5, 2, training_set, validation_set)
-
+    #test network
     print "testing network..."
-    test_MLP(network, 10, training_set)
+    test_MLP(network, 500, training_set)
 
-    plt.plot(error_hist,range(len(error_hist)),color='b',lw=1)
-    plt.axis([1,10,1,12])
+    #train network
+    print "training network..."
+    error_hist = train_MLP(network, 1000, 5, 2, training_set, validation_set)
+
+    #test network
+    print "testing network..."
+    test_MLP(network, 500, training_set)
+
+    #create graph of training error
+    plt.plot(range(len(error_hist)),error_hist,color='b',lw=1)
+    plt.axis([1,len(error_hist),1,2])
+    plt.xlabel("Epoch")
+    plt.ylabel("Error")
     plt.show()
-
-
-
-
-
 
 if __name__ == '__main__':
     test()
